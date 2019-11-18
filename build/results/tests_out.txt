@@ -1,0 +1,13 @@
+Breakpoint 1 at 0xf2: file source/main.c, line 26.
+Note: automatically using hardware breakpoints for read-only addresses.
+======================================================
+Running all tests..."
+
+"When weight limit is not exceeded."..."When weight limit is exceeded"...
+	Expected 0xe5 
+	PORTD '0x80002b:	0xe5
+"When difference in weight is greater than threshold"...
+	Expected 0x97 
+	PORTD '0x80002b:	0x97
+======================================================
+Quitting: Remote doesn't know how to detach
