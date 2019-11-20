@@ -12,6 +12,7 @@
 
 #include "PWM.h"
 #include "Timer.h"
+#include "nokia5110.h"
 
 unsigned short ADCValue;
 unsigned const short joyStickUpValue = 700;
@@ -28,7 +29,14 @@ int main(void) {
     ADC_init();
     PWM_on();
     
+    nokia_lcd_init();
+    //nokia_lcd_clear();
+    //nokia_lcd_set_cursor(0, 10);
+    nokia_lcd_write_char('k', 3);
+    nokia_lcd_render();
+    
 	while (1){
+		_delay_ms(1000);
 		ADCValue = ADC;
 		if( ADCValue > joyStickUpValue) {
 			PORTD = 0x40;
