@@ -10,8 +10,8 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-#include "PWM.h"
-#include "nokia5110.h"
+//#include "PWM.h"
+#include "Nokia_5110.h"
 
 volatile unsigned char TimerFlag = 0;
 
@@ -93,7 +93,7 @@ unsigned char Timing[31] = {1,1,1,2,2,4,1,1,2,3,1,2,2,4,6,4,2,4,4,4,4,4,6,4,2,4,
 song songs[1];
 
 int makeSound(int index){
-	set_PWM(frequencyArray[songs[0].frequencies[index]]);
+	//set_PWM(frequencyArray[songs[0].frequencies[index]]);
 	index += 1;
 	if (index >= songs[0].numNotes){
 		index = 0;
@@ -101,36 +101,65 @@ int makeSound(int index){
 	return index;
 }
 
+void HelloWorld(){
+	nokia_lcd_set_cursor(0, 0);
+    nokia_lcd_write_char('H', 3);
+    nokia_lcd_write_char('e', 2);
+    nokia_lcd_write_char('l', 2);
+    nokia_lcd_write_char('l', 2);
+    nokia_lcd_write_char('o', 2);
+    
+    nokia_lcd_set_cursor(10, 20);
+    
+    nokia_lcd_write_char('W', 3);
+    nokia_lcd_write_char('o', 2);
+    nokia_lcd_write_char('r', 2);
+    nokia_lcd_write_char('l', 2);
+    nokia_lcd_write_char('d', 2);
+    nokia_lcd_render();
+}
 int main(void) {
 	
     DDRB = 0xFF; PORTB = 0x00; // Nokia LCD
     DDRD = 0xFF; PORTD = 0x00; // B output
     ADC_init();
-    PWM_on();
+    //PWM_on();
     
+    nokia_lcd_init();
+    //HelloWorld();
+    nokia_lcd_set_cursor(1, 0);
+    nokia_lcd_write_string("Hello world!", 1);
+    nokia_lcd_render();
+    
+    //TimerSet(100);
+    //TimerOn();
+    
+    /*
     unsigned char i = 0;
 	tasks[i].state = 0;
 	tasks[i].period = 250;
 	tasks[i].elapsedTime = tasks[i].period;
 	tasks[i].TickFct = &makeSound;
-	
+	*/
+	/*
 	songs[0].name = "ABC Song";
 	songs[0].frequencies = {0,1,0,1,0,5,0,5,0,6,0,6,0,5,5,5,5,4,0,4,0,3,0,3,0,2,0,2,0,1,1,1,1,
 		5,0,5,0,4,0,4,0,3,0,3,0,2,2,2,2,5,0,5,0,4,0,4,0,3,0,3,0,2,2,2,2,
 		1,0,1,0,5,0,5,0,6,0,6,0,5,5,5,5,4,0,4,0,3,0,3,0,2,0,2,0,1,1,1,1};
 	songs[0].numNotes = 97;
-	
+	*/
     //nokia_lcd_init();
     //nokia_lcd_clear();
     //nokia_lcd_set_cursor(0, 10);
     //nokia_lcd_write_char('k', 3);
     //nokia_lcd_render();
     
+    /*
     TimerSet(1);
     TimerOn();
     
     int currentFrequency = 0;
-    
+    */
 	while (1){
 		ADCValue = ADC;
 		if( ADCValue > joyStickUpValue) {
