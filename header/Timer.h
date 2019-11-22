@@ -1,3 +1,6 @@
+##ifndef __TIMER_H__
+#define __TIMER_H__
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
@@ -5,13 +8,6 @@ volatile unsigned char TimerFlag = 0;
 
 unsigned long _avr_timer_M = 1;
 unsigned long _avr_timer_cntcurr = 0;
-
-typedef struct task {
-  int state;
-  unsigned long period;
-  unsigned long elapsedTime;
-  int (*TickFct)(int);
-} task;
 
 void TimerOn(){
     TCCR1B = 0x0B; // Timer controller register
@@ -39,17 +35,8 @@ void TimerSet(unsigned long M){
     _avr_timer_cntcurr = _avr_timer_M;
 }
 
-task tasks[1];
-const unsigned char tasksNum = 1;
-
 void TimerISR(){
 	TimerFlag = 1;
-    unsigned char i;
-	for (i=0; i < tasksNum; i++) {
-	   if (tasks[i].elapsedTime >= tasks[i].period){
-		  tasks[i].state = tasks[i].TickFct(tasks[i].state); 
-		  tasks[i].elapsedTime = 0;
-	   }
-	   tasks[i].elapsedTime += 1;
-	} 
 }
+
+#endif

@@ -18,22 +18,6 @@ volatile unsigned char TimerFlag = 0;
 unsigned long _avr_timer_M = 1;
 unsigned long _avr_timer_cntcurr = 0;
 
-typedef struct task {
-  int state;
-  unsigned long period;
-  unsigned long elapsedTime;
-  int (*TickFct)(int);
-} task;
-
-typedef struct song {
-  char* name;
-  char numNotes;
-  unsigned char* frequencies;
-} song;
-
-task tasks[1];
-const unsigned char tasksNum = 1;
-
 void TimerOn(){
     TCCR1B = 0x0B; // Timer controller register
     OCR1A = 125; // Output register
@@ -62,15 +46,23 @@ void TimerSet(unsigned long M){
 
 void TimerISR(){
 	TimerFlag = 1;
-    unsigned char i;
-	for (i=0; i < tasksNum; i++) {
-	   if (tasks[i].elapsedTime >= tasks[i].period){
-		  tasks[i].state = tasks[i].TickFct(tasks[i].state); 
-		  tasks[i].elapsedTime = 0;
-	   }
-	   tasks[i].elapsedTime += 1;
-	} 
 }
+
+typedef struct task {
+  int state;
+  unsigned long period;
+  unsigned long elapsedTime;
+  int (*TickFct)(int);
+} task;
+
+typedef struct song {
+  char* name;
+  char numNotes;
+  unsigned char* frequencies;
+} song;
+
+task tasks[1];
+const unsigned char tasksNum = 1;
 
 unsigned short ADCValue;
 unsigned const short joyStickUpValue = 700;
@@ -121,53 +113,40 @@ void HelloWorld(){
 int main(void) {
 	
     DDRB = 0xFF; PORTB = 0x00; // Nokia LCD
-    DDRD = 0xFF; PORTD = 0x00; // B output
+    DDRD = 0xFF; PORTD = 0x00; // LED output
     ADC_init();
-    //PWM_on();
+    
     
     nokia_lcd_init();
-    //HelloWorld();
-    nokia_lcd_set_cursor(1, 0);
-    nokia_lcd_write_string("Hello world!", 1);
+	nokia_lcd_clear();
+    nokia_lcd_write_string("Hello", 1);
     nokia_lcd_render();
     
-    //TimerSet(100);
-    //TimerOn();
-    
-    /*
-    unsigned char i = 0;
-	tasks[i].state = 0;
-	tasks[i].period = 250;
-	tasks[i].elapsedTime = tasks[i].period;
-	tasks[i].TickFct = &makeSound;
-	*/
-	/*
-	songs[0].name = "ABC Song";
-	songs[0].frequencies = {0,1,0,1,0,5,0,5,0,6,0,6,0,5,5,5,5,4,0,4,0,3,0,3,0,2,0,2,0,1,1,1,1,
-		5,0,5,0,4,0,4,0,3,0,3,0,2,2,2,2,5,0,5,0,4,0,4,0,3,0,3,0,2,2,2,2,
-		1,0,1,0,5,0,5,0,6,0,6,0,5,5,5,5,4,0,4,0,3,0,3,0,2,0,2,0,1,1,1,1};
-	songs[0].numNotes = 97;
-	*/
-    //nokia_lcd_init();
-    //nokia_lcd_clear();
-    //nokia_lcd_set_cursor(0, 10);
-    //nokia_lcd_write_char('k', 3);
-    //nokia_lcd_render();
-    
-    /*
-    TimerSet(1);
+    _delay_ms(1000); 
     TimerOn();
+    TimerSet(1);
+    unsigned short counter = 0;
+    unsigned int count2 = 0;
     
-    int currentFrequency = 0;
-    */
-	while (1){
+	while (1){	
+			//nokia_lcd_clear();
+		if (counter % 1000 == 0){	
+			nokia_lcd_clear();
+			nokia_lcd_write_char(count2 + '0', 2);
+			nokia_lcd_render();
+			_delay_ms(1000);
+		}
+		while (!TimerFlag);
+		TimerFlag = 0;
+		counter += 1;
+		/*
 		ADCValue = ADC;
 		if( ADCValue > joyStickUpValue) {
 			PORTD = 0x40;
 		}
 		else {
 			PORTD = 0x00;
-		}
+		}*/
 	}
 	
 	//PWM_off();
