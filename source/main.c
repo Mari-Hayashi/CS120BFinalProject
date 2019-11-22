@@ -110,8 +110,41 @@ void HelloWorld(){
     nokia_lcd_write_char('d', 2);
     nokia_lcd_render();
 }
+
+unsigned const char speed = 5;
+
+int ProduceObstacle(int curPos){
+	if (curPos < 0) return curPos;
+	nokia_lcd_clear();
+	nokia_lcd_set_cursor(curPos, 40);
+	nokia_lcd_write_char('o', 1);
+	curPos -= speed;
+	return curPos;
+}
+
+typedef enum CharState 
+	{ground, jump1, jump2, jump3, jump4, jump5} CharState;
+unsigned char jumpHeightArray[] = {5, 10, 15, 10, 5}; 
+	// Corresponds to jump1 - jump5
+	
+int Character(int curPos){
+	unsigned char height;
+	
+	if (curPos == ground){
+		height = 0;
+		if ((~PINA) != 0x00) curPos = jump1;
+	} else {
+		height = jumpHeightArray[curPos - 1];
+		curPos = (curPos == jump5) ? ground : curPos + 1;
+	}
+	nokia_lcd_set_cursor(10, 40 - height);
+	nokia_lcd_write_char('X', 1);
+	return curPos;
+}
+
 int main(void) {
 	
+    DDRA = 0x00; PORTA = 0xFF; // Nokia LCD
     DDRB = 0xFF; PORTB = 0x00; // Nokia LCD
     DDRD = 0xFF; PORTD = 0x00; // LED output
     ADC_init();
@@ -119,26 +152,23 @@ int main(void) {
     
     nokia_lcd_init();
 	nokia_lcd_clear();
-    nokia_lcd_write_string("Hello", 1);
-    nokia_lcd_render();
     
-    _delay_ms(1000); 
-    TimerOn();
-    TimerSet(1);
-    unsigned short counter = 0;
-    unsigned int count2 = 0;
+    unsigned char counter = 200;
+    unsigned char curPos = 80;
+    unsigned char CharacterState = ground;
     
 	while (1){	
-			//nokia_lcd_clear();
-		if (counter % 1000 == 0){	
-			nokia_lcd_clear();
-			nokia_lcd_write_char(count2 + '0', 2);
-			nokia_lcd_render();
-			_delay_ms(1000);
+		
+		curPos = ProduceObstacle(curPos);
+		CharacterState = Character(CharacterState);
+		
+		nokia_lcd_render();
+		
+		int s, h;
+		for (s = 0; s < 30; ++s){
+			for (h = 0; h < 3000; ++h);
 		}
-		while (!TimerFlag);
-		TimerFlag = 0;
-		counter += 1;
+		
 		/*
 		ADCValue = ADC;
 		if( ADCValue > joyStickUpValue) {
