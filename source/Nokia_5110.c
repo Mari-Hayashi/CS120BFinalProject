@@ -168,8 +168,8 @@ void nokia_lcd_write_char(char code, uint8_t scale)
 		for (y = 0; y < 7*scale; y++)
 			if (pgm_read_byte(&CHARSET[code-32][x/scale]) & (1 << y/scale))
 				nokia_lcd_set_pixel(nokia_lcd.cursor_x + x, nokia_lcd.cursor_y + y, 1);
-			else
-				nokia_lcd_set_pixel(nokia_lcd.cursor_x + x, nokia_lcd.cursor_y + y, 0);
+			//else
+				//nokia_lcd_set_pixel(nokia_lcd.cursor_x + x, nokia_lcd.cursor_y + y, 0);
 
 	nokia_lcd.cursor_x += 5*scale + 1;
 	if (nokia_lcd.cursor_x >= 84) {
