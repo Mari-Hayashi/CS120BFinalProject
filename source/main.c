@@ -8,41 +8,15 @@
  *	code, is my own original work.
  */
 #include <avr/io.h>
-#include <util/delay.h>
-#include <avr/interrupt.h>
 
 #include "PWM.h"
 #include "Nokia_5110.h"
+#include "songs.h"
+
 typedef enum boolean {true, false} boolean;
 typedef enum song { ABC, JingleBell, Flower } song;
-unsigned const char numSongs = 3;
 
-unsigned const char ABCSongFrequencies[97] = {0,1,0,1,0,5,0,5,0,6,0,6,0,5,5,5,5,4,0,4,0,3,0,3,0,2,0,2,0,1,1,1,1,
-	5,0,5,0,4,0,4,0,3,0,3,0,2,2,2,2,5,0,5,0,4,0,4,0,3,0,3,0,2,2,2,2,
-	1,0,1,0,5,0,5,0,6,0,6,0,5,5,5,5,4,0,4,0,3,0,3,0,2,0,2,0,1,1,1,1};
-const unsigned char ABCSongObstacles[97] = { 0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,
-	1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,
-	1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0 };
-unsigned const char ABCnumNotes = 97;
-
-unsigned const char JingleBellSongFrequencies[128] = {3,0,3,0,3,3,3,0,3,0,3,0,3,3,3,0,3,0,5,0,1,1,1,2,3,3,3,3,0,0,0,0,
-	4,0,4,0,4,0,4,0,4,0,3,0,3,0,3,0,3,3,2,0,2,2,3,3,2,2,2,2,5,5,5,5,
-	3,0,3,0,3,3,3,0,3,0,3,0,3,3,3,0,3,0,5,0,1,1,1,2,3,3,3,3,0,0,0,0,
-	4,0,4,0,4,0,4,0,4,0,3,0,3,0,3,0,5,0,5,5,4,4,2,2,1,1,1,1,8,8,8,8};
-unsigned const char JingleBellObstacles[128] =       {1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,
-	1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,
-	1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,
-	1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0};
-unsigned const char JBnumNotes = 128;
-
-unsigned const char FlowerSongFrequencies[80] = {1,0,3,0,0,0,3,0,1,0,3,0,0,0,3,0,
-	3,0,3,4,5,0,3,0,4,0,4,5,2,0,2,0,3,0,3,4,5,0,8,0,6,6,6,0,5,0,0,0,
-	3,0,3,4,5,0,3,0,4,0,4,5,2,0,2,0,3,0,3,4,2,0,2,0,1,1,1,1,8,8,8,8};
-unsigned const char FlowerSongObstacles[80] =   {1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,
-	1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,
-	1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0};
-unsigned const char FlowerNumNotes = 80;
-
+///////////////////// TASK ///////////////////////
 typedef struct task {
   int state;
   unsigned long period;
@@ -50,9 +24,10 @@ typedef struct task {
   int (*TickFct)(int);
 } task;
 
-task tasks[6];
-const unsigned char tasksNum = 6;
+task tasks[7];
+const unsigned char tasksNum = 7;
 
+///////////////////// JOY STICK ///////////////////////
 unsigned short ADCValue;
 unsigned const short joyStickUpValue = 700;
 unsigned const short joyStickDownValue = 300;
@@ -68,26 +43,21 @@ boolean joyStickDown() {
 	return (ADCValue < joyStickDownValue) ? true : false;
 }
 
-double frequencyArray[9] = {0, 261.63, 293.66, 329.63, 349.23, 392, 440, 493.88, 523.25};
-unsigned const char numFrequency = 9;
-
-typedef enum GameState { Init, SongSelect, Start, Fail, Achieve, WaitToBeReleased, Reset} GameState;
+///////////////////// GAME MANAGER ///////////////////////
+typedef enum GameState { Init, SongSelect, Start, Fail, 
+	Achieve, WaitToBeReleased, Reset} GameState;
 boolean GameOver;
 boolean GameClear;
 boolean GameGoingOn;
-song Song;
-unsigned const char GameClearMusic[51] = {0,0,0,4,5,6,7,6,7,8,8,5,3,3,3,4,5,6,7,6,7,8,8,8,5,5,5,
-	4,5,6,7,6,7,8,8,5,3,3,5,4,4,3,2,2,3,1,1,1,8,8,8};
-unsigned const char ClearMusicLength = 51;
-unsigned const char GameOverMusic[14] = {0,0,0,1,0,1,1,1,1,1,1,1,1,0};
-unsigned const char FailMusicLength = 14;
-unsigned char curPosInSoundEffect;
 boolean songSelect;
+song Song;
 unsigned char numNotes;
+unsigned char score;
 
 int GameManager(int state) {
 	
 	unsigned char selectButton;
+	unsigned char resetButton;
 	
 	// Transition
 	switch (state)
@@ -120,8 +90,8 @@ int GameManager(int state) {
 			break;
 	}
 	
-	unsigned char button = (~PINC) & 0x01;
-	if (button) state = Reset;
+	resetButton = (~PINC) & 0x01;
+	if (resetButton) state = Reset;
 	
 	// Action
 	switch (state)
@@ -138,13 +108,11 @@ int GameManager(int state) {
 			break;
 		case Fail:
 			GameGoingOn = false;
-			curPosInSoundEffect = PlaySoundEffect(curPosInSoundEffect);
 			DisplayGameOver();
 			break;
 		case Achieve:
 			GameGoingOn = false;
 			DisplayGameClear();
-			curPosInSoundEffect = PlaySoundEffect(curPosInSoundEffect);
 			break;
 		case Reset:
 			InitializeGame();
@@ -156,6 +124,109 @@ int GameManager(int state) {
 	return state;
 }
 
+void DisplayTitle() {
+	static char UpOrDown = 0; // 0 = up, 1 = down
+	static const char maxHeight = 5;
+	static char height = 0;
+	
+	if (UpOrDown == 0){
+		height += 1;
+		if (height >= maxHeight){
+			UpOrDown = 1;
+		}
+	} else {
+		height -= 1;
+		if (height <= 0){
+			UpOrDown = 0;
+		}
+	}
+	
+	nokia_lcd_set_cursor(0, 0);
+	nokia_lcd_write_char('M', 3);
+	nokia_lcd_write_char('u', 2);
+	nokia_lcd_write_char('s', 2);
+	nokia_lcd_write_char('i', 2);
+	nokia_lcd_write_char('c', 2);
+
+	nokia_lcd_set_cursor(10, 20);
+
+	nokia_lcd_write_char('G', 3);
+	nokia_lcd_write_char('a', 2);
+	nokia_lcd_write_char('m', 2);
+	nokia_lcd_write_char('e', 2);
+	
+	unsigned char i;
+	unsigned char j;
+	
+	for (i = 27; i < 37; ++i){
+		nokia_lcd_set_pixel(72, i-height, 1);
+		nokia_lcd_set_pixel(73, i-height, 1);
+		nokia_lcd_set_pixel(74, i, 1);
+	}
+	
+	for (i = 65; i < 75; ++i){
+		nokia_lcd_set_pixel(i, 40-height, 1);
+	}
+	for (i = 66; i < 74; ++i){
+		nokia_lcd_set_pixel(i, 39-height, 1);
+		nokia_lcd_set_pixel(i, 41-height, 1);
+	}
+	for (i = 67; i < 73; ++i){
+		nokia_lcd_set_pixel(i, 38-height, 1);
+		nokia_lcd_set_pixel(i, 42-height, 1);
+	}
+	
+	for (i = 0; i < 3; ++i){
+		for (j = 75 + i; j < 80 + i; ++j){
+			nokia_lcd_set_pixel(j, i + 27-height, 1);
+		}
+	}
+}
+
+void DisplayGameOver() {
+	nokia_lcd_set_cursor(0, 0);
+	nokia_lcd_write_char('G', 3);
+	nokia_lcd_write_char('a', 2);
+	nokia_lcd_write_char('m', 2);
+	nokia_lcd_write_char('e', 2);
+
+	nokia_lcd_set_cursor(10, 20);
+
+	nokia_lcd_write_char('O', 3);
+	nokia_lcd_write_char('v', 2);
+	nokia_lcd_write_char('e', 2);
+	nokia_lcd_write_char('r', 2);
+}
+
+void DisplayGameClear() {
+	nokia_lcd_set_cursor(0, 0);
+	nokia_lcd_write_char('G', 3);
+	nokia_lcd_write_char('a', 2);
+	nokia_lcd_write_char('m', 2);
+	nokia_lcd_write_char('e', 2);
+
+	nokia_lcd_set_cursor(10, 20);
+
+	nokia_lcd_write_char('C', 3);
+	nokia_lcd_write_char('l', 2);
+	nokia_lcd_write_char('e', 2);
+	nokia_lcd_write_char('a', 2);
+	nokia_lcd_write_char('r', 2);
+}
+
+int PlaySoundEffect(int curPos){
+	if (GameClear == true && curPos < ClearMusicLength){
+		set_PWM(frequencyArray[GameClearMusic[curPos]]);
+		return curPos + 1;
+	} else if (GameOver == true && curPos < FailMusicLength){
+		set_PWM(frequencyArray[GameOverMusic[curPos]]);
+		return curPos + 1;
+	} else {
+		return curPos;
+	}
+}
+
+///////////////////// SONG SELECT CONTROLLER ///////////////////////
 typedef enum songSelectState { wait, getInput, waitRelease } songSelectState;
 int ChooseSong(int state){
 	if (songSelect == false) return wait;
@@ -217,67 +288,7 @@ int ChooseSong(int state){
 	
 	return state;
 }
-
-int PlaySoundEffect(int curPos){
-	if (GameClear == true && curPos < ClearMusicLength){
-		set_PWM(frequencyArray[GameClearMusic[curPos]]);
-		return curPos + 1;
-	} else if (GameOver == true && curPos < FailMusicLength){
-		set_PWM(frequencyArray[GameOverMusic[curPos]]);
-		return curPos + 1;
-	} else {
-		set_PWM(0);
-		return curPos;
-	}
-}
-
-void DisplayTitle() {
-	nokia_lcd_set_cursor(0, 0);
-	nokia_lcd_write_char('M', 3);
-	nokia_lcd_write_char('u', 2);
-	nokia_lcd_write_char('s', 2);
-	nokia_lcd_write_char('i', 2);
-	nokia_lcd_write_char('c', 2);
-
-	nokia_lcd_set_cursor(10, 20);
-
-	nokia_lcd_write_char('G', 3);
-	nokia_lcd_write_char('a', 2);
-	nokia_lcd_write_char('m', 2);
-	nokia_lcd_write_char('e', 2);
-}
-
-void DisplayGameOver() {
-	nokia_lcd_set_cursor(0, 0);
-	nokia_lcd_write_char('G', 3);
-	nokia_lcd_write_char('a', 2);
-	nokia_lcd_write_char('m', 2);
-	nokia_lcd_write_char('e', 2);
-
-	nokia_lcd_set_cursor(10, 20);
-
-	nokia_lcd_write_char('O', 3);
-	nokia_lcd_write_char('v', 2);
-	nokia_lcd_write_char('e', 2);
-	nokia_lcd_write_char('r', 2);
-}
-
-void DisplayGameClear() {
-	nokia_lcd_set_cursor(0, 0);
-	nokia_lcd_write_char('G', 3);
-	nokia_lcd_write_char('a', 2);
-	nokia_lcd_write_char('m', 2);
-	nokia_lcd_write_char('e', 2);
-
-	nokia_lcd_set_cursor(10, 20);
-
-	nokia_lcd_write_char('C', 3);
-	nokia_lcd_write_char('l', 2);
-	nokia_lcd_write_char('e', 2);
-	nokia_lcd_write_char('a', 2);
-	nokia_lcd_write_char('r', 2);
-}
-
+///////////////////// CHARACTER CONTROLLER ///////////////////////
 typedef enum CharState 
 	{ground, jump1, jump2, jump3, jump4, jump5} CharState;
 unsigned char jumpHeightArray[] = {5, 10, 15, 10, 5}; 
@@ -321,8 +332,8 @@ int Character(int state){
 	return state;
 }
 
+///////////////////// SONG PLAY CONTROLLER ///////////////////////
 unsigned const char timeWaitForObstacle = 6; // times period ms.
-
 int MusicPlay(int index) {
 	if (GameGoingOn == false) {
 		return timeWaitForObstacle * -1;
@@ -352,13 +363,13 @@ int MusicPlay(int index) {
 	return index + 1;
 }
 
+///////////////////// OBSTACLES CONTROLLER ///////////////////////
 signed char Obstacles[] = { -1, -1, -1, -1, -1 }; // Series of obstacles.
 // Store the current position of obstacles. If negative, it's not on the screen.
 unsigned const char ObstacleArraySize = 5; // Size of the array above.
 
 unsigned const char ObstacleInitialPosition = 79; // x position.
 unsigned const char ObstacleSpeed = 5; // pixel
-unsigned char score = 0;
 
 void ProduceObstacles(int index) {
 	// Check if obstacle hits character
@@ -412,6 +423,7 @@ int nokia_write_obstacle(int curPos) {
 	return curPos - ObstacleSpeed;
 }
 
+///////////////////// SCORE DISPLAY ///////////////////////
 int DisplayScore(int state){
 	if (GameGoingOn == true){
 		nokia_lcd_set_cursor(0,0);
@@ -441,6 +453,7 @@ int DisplayScore(int state){
 	return 0;
 }
 
+///////////////////// GAME INITIALIZATION ///////////////////////
 void InitializeGame(){
 	
 	score = 0;
@@ -451,8 +464,6 @@ void InitializeGame(){
 	songSelect = false;
 	
 	CharacterIsJumping = false;
-	
-	curPosInSoundEffect = 0;
 	
 	Song = ABC;
 	
@@ -509,8 +520,17 @@ void InitializeGame(){
 	tasks[i].elapsedTime = tasks[i].period;
 	tasks[i].state = wait;
 	tasks[i].TickFct = &ChooseSong;
+	
+	i++;
+	
+	// Sound effect
+	tasks[i].period = 1;
+	tasks[i].elapsedTime = tasks[i].period;
+	tasks[i].state = 0;
+	tasks[i].TickFct = &PlaySoundEffect;
 }
 
+///////////////////// MAIN ///////////////////////
 int main(void) {
 	
     DDRA = 0x00; PORTA = 0xFF; // Joystick (Input)
