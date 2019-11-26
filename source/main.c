@@ -161,7 +161,7 @@ void DisplayTitle() {
 	for (i = 27; i < 37; ++i){
 		nokia_lcd_set_pixel(72, i-height, 1);
 		nokia_lcd_set_pixel(73, i-height, 1);
-		nokia_lcd_set_pixel(74, i, 1);
+		nokia_lcd_set_pixel(74, i-height, 1);
 	}
 	
 	for (i = 65; i < 75; ++i){
@@ -288,6 +288,7 @@ int ChooseSong(int state){
 	
 	return state;
 }
+
 ///////////////////// CHARACTER CONTROLLER ///////////////////////
 typedef enum CharState 
 	{ground, jump1, jump2, jump3, jump4, jump5} CharState;
