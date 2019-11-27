@@ -15,6 +15,8 @@
 
 typedef enum boolean {true, false} boolean;
 typedef enum song { ABC, JingleBell, Flower } song;
+typedef enum difficulty { EASY, MEDIUM, HARD, ENDLESS } difficulty;
+unsigned const char numDifficulties = 4;
 
 ///////////////////// TASK ///////////////////////
 typedef struct task {
@@ -24,8 +26,8 @@ typedef struct task {
   int (*TickFct)(int);
 } task;
 
-task tasks[7];
-const unsigned char tasksNum = 7;
+task tasks[8];
+const unsigned char tasksNum = 8;
 
 ///////////////////// JOY STICK ///////////////////////
 unsigned short ADCValue;
@@ -44,15 +46,19 @@ boolean joyStickDown() {
 }
 
 ///////////////////// GAME MANAGER ///////////////////////
-typedef enum GameState { Init, SongSelect, Start, Fail, 
+typedef enum GameState { Init, SongSelect, WaitButtonRelease, DifficultySelect, Start, Fail, 
 	Achieve, WaitToBeReleased, Reset} GameState;
 boolean GameOver;
 boolean GameClear;
 boolean GameGoingOn;
 boolean songSelect;
+boolean difficultySelect;
 song Song;
+difficulty Difficulty;
 unsigned char numNotes;
 unsigned char score;
+unsigned short frequency;
+unsigned const short defaultFrequency = 2000;
 
 int GameManager(int state) {
 	
@@ -67,7 +73,15 @@ int GameManager(int state) {
 			break;
 		case SongSelect:
 			selectButton = ((~PINC) & 0x02) >> 1;
-			state = (selectButton) ? Start : SongSelect;
+			state = (selectButton) ? WaitButtonRelease : SongSelect;
+			break;
+		case WaitButtonRelease:
+			selectButton = ((~PINC) & 0x02) >> 1;
+			state = (selectButton) ? WaitButtonRelease : DifficultySelect;
+			break;
+		case DifficultySelect:
+			selectButton = ((~PINC) & 0x02) >> 1;
+			state = (selectButton) ? Start : DifficultySelect;
 			break;
 		case Start:
 			if (GameOver == true) state = Fail;
@@ -102,8 +116,12 @@ int GameManager(int state) {
 		case SongSelect:
 			songSelect = true;
 			break;
-		case Start:
+		case DifficultySelect:
 			songSelect = false;
+			difficultySelect = true;
+			break;
+		case Start:
+			difficultySelect = false;
 			GameGoingOn = true;
 			break;
 		case Fail:
@@ -111,11 +129,18 @@ int GameManager(int state) {
 			DisplayGameOver();
 			break;
 		case Achieve:
-			GameGoingOn = false;
-			DisplayGameClear();
+			if (Difficulty == ENDLESS){
+				frequency = frequency * 2 / 3;
+				if (frequency < 1) frequency = 1;
+				InitializeGame(true);
+				state = Start;
+			} else {
+				GameGoingOn = false;
+				DisplayGameClear();
+			}
 			break;
 		case Reset:
-			InitializeGame();
+			InitializeGame(false);
 			DisplayTitle();
 		default:
 			break;
@@ -155,6 +180,8 @@ void DisplayTitle() {
 	nokia_lcd_write_char('m', 2);
 	nokia_lcd_write_char('e', 2);
 	
+	// Draw music symbol
+	
 	unsigned char i;
 	unsigned char j;
 	
@@ -184,6 +211,8 @@ void DisplayTitle() {
 }
 
 void DisplayGameOver() {
+	frequency = defaultFrequency;
+	
 	nokia_lcd_set_cursor(0, 0);
 	nokia_lcd_write_char('G', 3);
 	nokia_lcd_write_char('a', 2);
@@ -199,13 +228,31 @@ void DisplayGameOver() {
 }
 
 void DisplayGameClear() {
-	nokia_lcd_set_cursor(0, 0);
+	frequency = defaultFrequency;
+	
+	static char UpOrDown = 0; // 0 = up, 1 = down
+	const char maxHeight = 3;
+	static char height = 0;
+	
+	if (UpOrDown == 0){
+		height += 1;
+		if (height >= maxHeight){
+			UpOrDown = 1;
+		}
+	} else {
+		height -= 1;
+		if (height <= 0){
+			UpOrDown = 0;
+		}
+	}
+	
+	nokia_lcd_set_cursor(0, 0 + height);
 	nokia_lcd_write_char('G', 3);
 	nokia_lcd_write_char('a', 2);
 	nokia_lcd_write_char('m', 2);
 	nokia_lcd_write_char('e', 2);
 
-	nokia_lcd_set_cursor(10, 20);
+	nokia_lcd_set_cursor(10, 20 + height);
 
 	nokia_lcd_write_char('C', 3);
 	nokia_lcd_write_char('l', 2);
@@ -237,7 +284,6 @@ int ChooseSong(int state){
 			state = (joyStickDown() == true || joyStickUp() == true) ? getInput : wait;
 			break;
 		case getInput:
-			PORTD = 0xFF;
 			state = waitRelease;
 			break;
 		case waitRelease:
@@ -247,7 +293,6 @@ int ChooseSong(int state){
 	
 	// Action
 	if (state == getInput){
-		PORTD = 0xFF;
 		switch (Song){
 			case ABC:
 				Song = (joyStickDown() == true) ? JingleBell : ABC;
@@ -284,6 +329,67 @@ int ChooseSong(int state){
 	nokia_lcd_write_string("Flower Song", 1);
 	
 	nokia_lcd_set_cursor(0, 10 * (Song + 1));
+	nokia_lcd_write_char('o', 1);
+	
+	return state;
+}
+
+///////////////////// DIFFICULTY SELECT CONTROLLER ///////////////////////
+int ChooseDifficulty(int state){
+	if (difficultySelect == false) return wait;
+	
+	// Transition
+	switch(state){
+		case wait:
+			state = (joyStickDown() == true || joyStickUp() == true) ? getInput : wait;
+			break;
+		case getInput:
+			state = waitRelease;
+			break;
+		case waitRelease:
+			state = (joyStickDown() == false && joyStickUp() == false) ? wait : waitRelease;
+			break;
+	}
+	
+	// Action
+	if (state == getInput){
+		if (joyStickDown() == true){
+			Difficulty += 1;
+			if (Difficulty >= numDifficulties) 
+				Difficulty = numDifficulties - 1;
+		}
+		if (joyStickUp() == true){
+			Difficulty -= 1;
+			if (Difficulty < 0) Difficulty = 0;
+		}
+		
+		switch (Difficulty){
+			case EASY:
+				frequency = 3000;
+				break;
+			case MEDIUM:
+				frequency = 2000;
+				break;
+			case HARD:
+				frequency = 1000;
+				break;
+			case ENDLESS:
+				frequency = 3000;
+				break;
+		}
+	}
+	
+	// Write
+	nokia_lcd_set_cursor(10, 5);
+	nokia_lcd_write_string("Easy", 1);
+	nokia_lcd_set_cursor(10, 15);
+	nokia_lcd_write_string("Medium", 1);
+	nokia_lcd_set_cursor(10, 25);
+	nokia_lcd_write_string("Hard", 1);
+	nokia_lcd_set_cursor(10, 35);
+	nokia_lcd_write_string("Endless", 1);
+	
+	nokia_lcd_set_cursor(0, (10 * Difficulty) + 5);
 	nokia_lcd_write_char('o', 1);
 	
 	return state;
@@ -455,24 +561,29 @@ int DisplayScore(int state){
 }
 
 ///////////////////// GAME INITIALIZATION ///////////////////////
-void InitializeGame(){
-	
-	score = 0;
+void InitializeGame(boolean keepData){
 	
 	GameOver = false;
 	GameClear = false;
 	GameGoingOn = false;
 	songSelect = false;
+	difficultySelect = false;
+	
+	if (keepData == false){
+		score = 0;
+		frequency = defaultFrequency;
+		Song = ABC;
+		Difficulty = EASY;
+	}
 	
 	CharacterIsJumping = false;
 	
-	Song = ABC;
-	
 	set_PWM(0);
 	
-	//numNotes = ABCnumNotes;
-	//strncpy(SongFrequencies, ABCSongFrequencies, numNotes);
-	//strncpy(SongObstacles, ABCSongObstacles, numNotes);
+	unsigned char j = 0;
+	for (j = 0; j < ObstacleArraySize; ++j){
+		Obstacles[j] = -1;
+	}
 	
 	unsigned char i = 0;
 	
@@ -529,6 +640,14 @@ void InitializeGame(){
 	tasks[i].elapsedTime = tasks[i].period;
 	tasks[i].state = 0;
 	tasks[i].TickFct = &PlaySoundEffect;
+	
+	i++;
+	
+	// Difficulty effect
+	tasks[i].period = 1;
+	tasks[i].elapsedTime = tasks[i].period;
+	tasks[i].state = wait;
+	tasks[i].TickFct = &ChooseDifficulty;
 }
 
 ///////////////////// MAIN ///////////////////////
@@ -536,14 +655,14 @@ int main(void) {
 	
     DDRA = 0x00; PORTA = 0xFF; // Joystick (Input)
     DDRB = 0xFF; PORTB = 0x00; // Nokia LCD (Output)
-    DDRC = 0x00; PORTC = 0xFF; // Reset button (Input)
-    DDRD = 0xFF; PORTD = 0x00; // LED output (Output for testing)
+    DDRC = 0x00; PORTC = 0xFF; // Buttons (Input)
+    DDRD = 0xFF; PORTD = 0x00; // Nokia LCD (Output)
     
     ADC_init();
 	PWM_on();
     nokia_lcd_init();
     
-    InitializeGame();
+    InitializeGame(false);
     
 	while (1){	
 		
@@ -562,7 +681,7 @@ int main(void) {
 		
 		int s, h;
 		for (s = 0; s < 30; ++s){
-			for (h = 0; h < 3000; ++h);
+			for (h = 0; h < frequency; ++h);
 		}
 		
 	}
