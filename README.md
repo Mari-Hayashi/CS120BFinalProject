@@ -6,12 +6,12 @@ For my Custom Project, I designed and developed a rhythm action game using a Nok
 
 
 ## Technologies and Components
-*SimAVR
-*ATmega1284 Microcontroller
-*Nokia 5100 LCD Screen
-*Parallax 2-Axis Joystick
-*Speaker
-*Buttons
+- SimAVR
+- ATmega1284 Microcontroller
+- Nokia 5100 LCD Screen
+- Parallax 2-Axis Joystick
+- Speaker
+- Buttons
 
 ## User Guide
 
