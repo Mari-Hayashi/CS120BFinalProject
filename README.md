@@ -36,3 +36,6 @@ Whenever the reset button (connected to PC0) is pressed, it goes back to the tit
 
 ## Library
 Nokia 5110 LCD Library: github.com/pseudodan/CS120B_Embedded-Systems
+
+## Demo Video on YouTube
+https://youtu.be/9tfQdOKx-Co
